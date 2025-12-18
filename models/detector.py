@@ -25,16 +25,16 @@ class DeepfakeDetector(nn.Module):
         self.mode = mode.lower()
         self.num_classes = num_classes
         self.spatial_frozen = False
+        self.img_size = kwargs.get("img_size", 240)
+        self.attn_hidden_dim = kwargs.get("attention_hidden_dim", 256)
 
         # Spatial branch parameters
         if self.mode in ['spatial', 'hybrid']:
-            efficientnet_model = kwargs.get('efficientnet_model', 'efficientnet_b4')
-            pretrained = kwargs.get('pretrained', True)
-            spatial_dim = kwargs.get('spatial_dim', 1024)
+            efficientnet_model = kwargs.get('efficientnet_model', 'efficientnet_b0')
+            spatial_dim = kwargs.get('spatial_dim', 512)
 
             self.spatial_branch = SpatialBranch(
                 model_name=efficientnet_model,
-                pretrained=pretrained,
                 output_dim=spatial_dim
             )
             self._spatial_dim = spatial_dim
@@ -44,13 +44,12 @@ class DeepfakeDetector(nn.Module):
 
         # Frequency branch parameters
         if self.mode in ['frequency', 'hybrid']:
-            freq_method = kwargs.get('freq_method', 'fft')
             freq_dim = kwargs.get('freq_dim', 512)
 
             self.frequency_branch = FrequencyBranch(
                 input_channels=3,
-                method=freq_method,
-                output_dim=freq_dim
+                output_dim=freq_dim,
+                img_size=self.img_size
             )
             self._freq_dim = freq_dim
         else:
@@ -66,7 +65,7 @@ class DeepfakeDetector(nn.Module):
                 self.fusion = AttentionFusion(
                     spatial_dim=self._spatial_dim,
                     freq_dim=self._freq_dim,
-                    hidden_dim=256
+                    hidden_dim=self.attn_hidden_dim
                 )
             else:
                 self.fusion = None
@@ -77,10 +76,10 @@ class DeepfakeDetector(nn.Module):
         # Classification head
         self.classifier = nn.Sequential(
             nn.Linear(fusion_dim, 512),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
             nn.Linear(512, 256),
-            nn.ReLU(),
+            nn.ReLU(inplace=True),
             nn.Dropout(dropout_rate),
             nn.Linear(256, num_classes)
         )
@@ -140,12 +139,19 @@ class DeepfakeDetector(nn.Module):
         for param in self.spatial_branch.parameters():
             param.requires_grad = not freeze
 
-        for m in self.spatial_branch.modules():
+        for m in self.spatial_branch.backbone.modules():
             if isinstance(m, nn.BatchNorm2d):
-                m.eval()
-                m.track_running_stats = not freeze
-                for p in m.parameters():
-                    p.requires_grad = False
+                if freeze:
+                    m.eval()
+                    for p in m.parameters():
+                        p.requires_grad = False
+                else:
+                    m.train()
+                    for p in m.parameters():
+                        p.requires_grad = True
+
+        for param in self.spatial_branch.projection.parameters():
+            param.requires_grad = True
             
         print(f"== Spatial Branch is now {'Frozen' if freeze else 'Unfrozen'}.")
 
@@ -171,7 +177,9 @@ class DeepfakeDetector(nn.Module):
         spatial_features = self.spatial_branch(x)
         freq_features = self.frequency_branch(x)
         
-        spatial_weight = self.fusion.spatial_attention(spatial_features)
-        freq_weight = self.fusion.freq_attention(freq_features)
+        spatial_weight, freq_weight = self.fusion.get_attention_weights(
+            spatial_features,
+            freq_features
+        )
             
         return spatial_weight, freq_weight

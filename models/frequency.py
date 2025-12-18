@@ -2,11 +2,10 @@ import torch
 import torch.nn as nn
 
 class FrequencyExtractor(nn.Module):
-    """Fast, vectorized frequency-domain feature extractor (FFT / DCT / both)"""
+    """Fast, vectorized frequency-domain feature extractor (FFT)"""
 
-    def __init__(self, method='fft', high_freq_ratio=0.5, img_size=224):
+    def __init__(self, high_freq_ratio=0.7, img_size=240):
         super().__init__()
-        self.method = method
 
         # Precomputed high-pass mask (moves with model.device)
         mask = self._create_high_pass_mask(img_size, img_size, high_freq_ratio)
@@ -41,33 +40,15 @@ class FrequencyExtractor(nn.Module):
         magnitude = torch.log(torch.abs(fft_shifted) + 1e-8)
         return magnitude
 
-    def extract_dct_features(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
-        Vectorized DCT if available, fast FFT-based fallback otherwise.
+        Args:
+            x: (B, C, H, W)
+        Returns:
+            FFT magnitude (B, C, H, W)
         """
-        try:
-            import torch_dct as dct_lib
-            return dct_lib.dct_2d(x)   # Vectorized
-        except ImportError:
-            # Fallback: fast approximation (vectorized)
-            x_padded = torch.cat([x, torch.flip(x, dims=[-1])], dim=-1)
-            fft = torch.fft.fft(x_padded)
-            return torch.real(fft[..., :x.shape[-1]]) * 0.5
+        freq = self.extract_fft_features(x)
 
-    def forward(self, x):
-        if self.method == 'fft':
-            freq = self.extract_fft_features(x)
-        elif self.method == 'dct':
-            freq = self.extract_dct_features(x)
-        elif self.method == 'both':
-            freq = torch.cat([
-                self.extract_fft_features(x),
-                self.extract_dct_features(x)
-            ], dim=1)
-        else:
-            raise ValueError(f"Unknown method: {self.method}")
-
-        # Apply high-pass mask (broadcasted)
         return freq * self.high_pass_mask
 
 
@@ -77,23 +58,18 @@ class FrequencyBranch(nn.Module):
     def __init__(
         self,
         input_channels=3,
-        method='fft',
         output_dim=512,
-        img_size=224
+        img_size=240
     ):
         super().__init__()
 
         self.freq_extractor = FrequencyExtractor(
-            method=method,
             img_size=img_size
         )
 
-        # channels = 3 (RGB) or 6 (FFT+DCT)
-        freq_channels = input_channels * (2 if method == 'both' else 1)
-
         self.conv_layers = nn.Sequential(
             # Block 1
-            nn.Conv2d(freq_channels, 64, 3, padding=1),
+            nn.Conv2d(input_channels, 64, 3, padding=1),
             nn.BatchNorm2d(64),
             nn.ReLU(inplace=True),
             nn.MaxPool2d(2, 2),
