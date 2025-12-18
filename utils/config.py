@@ -4,8 +4,13 @@ import torch
 class PathConfig:
     BASE_DIR = os.path.join(os.pardir, os.pardir)
     DATASETS = os.path.join(BASE_DIR, 'Datasets')
-    AI_GEN_IMGS = os.path.join(DATASETS, 'AI_Generated')
-    REAL_IMGS = os.path.join(DATASETS, 'Real')
+    RAW_AI_GEN_IMGS = os.path.join(DATASETS, 'AI_Generated')
+    RAW_REAL_IMGS = os.path.join(DATASETS, 'Real')
+
+    PROCESSED_DATA = os.path.join(DATASETS, "processed")
+    REAL_IMGS = os.path.join(PROCESSED_DATA, 'Real')
+    AI_GEN_IMGS = os.path.join(PROCESSED_DATA, "Fake")
+    
     SPILTTED_DATASETS = os.path.join(DATASETS, 'Split_Data')
     OUTPUTS = os.path.join(BASE_DIR, 'Outputs')
 
@@ -35,7 +40,7 @@ class TrainingConfig:
         self.BATCH_SIZE = 16
         self.LEARNING_RATE = 1e-4
         self.WEIGHT_DECAY = 1e-4
-        self.IMG_SIZE = 224
+        self.IMG_SIZE = 240
         self.NUM_WORKERS = 0
         self.FREEZE_EPOCHS = 3 
 
@@ -56,12 +61,12 @@ class TrainingConfig:
         # --- Model parameters ---
         self.MODEL_CONFIG = {
             'num_classes': 2,
-            'dropout_rate': 0.5,
-            'efficientnet_model': 'efficientnet_b0',
+            'dropout_rate': 0.4,
+            'efficientnet_model': 'efficientnet_b1',
             'spatial_dim': 512,
-            'freq_method': 'fft',
             'freq_dim': 512,
             'use_attention_fusion': True,
+            'attention_hidden_dim': 256
         }
 
     def create_directories(self):

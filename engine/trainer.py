@@ -51,13 +51,52 @@ class Trainer:
         self.cfg.create_directories()
 
     def _build_optimizer(self):
-        trainable = [p for p in self.model.parameters() if p.requires_grad]
+        param_groups = []
+
+        # 1Backbone (EfficientNet)
+        if self.model.spatial_branch is not None:
+            backbone_params = [
+                p for p in self.model.spatial_branch.backbone.parameters()
+                if p.requires_grad
+            ]
+            if backbone_params:
+                param_groups.append({
+                    "params": backbone_params,
+                    "lr": self.cfg.LEARNING_RATE * 0.1
+                })
+
+            # Projection 
+            proj_params = list(
+                self.model.spatial_branch.projection.parameters()
+            )
+            param_groups.append({
+                "params": proj_params,
+                "lr": self.cfg.LEARNING_RATE
+            })
+
+        # Frequency branch
+        if self.model.frequency_branch is not None:
+            param_groups.append({
+                "params": self.model.frequency_branch.parameters(),
+                "lr": self.cfg.LEARNING_RATE
+            })
+
+        # Fusion + Classifier
+        other_params = []
+        if self.model.fusion is not None:
+            other_params += list(self.model.fusion.parameters())
+        other_params += list(self.model.classifier.parameters())
+
+        param_groups.append({
+            "params": other_params,
+            "lr": self.cfg.LEARNING_RATE
+        })
+
         return optim.AdamW(
-            trainable,
-            lr=self.cfg.LEARNING_RATE,
-            weight_decay=self.cfg.WEIGHT_DECAY,
-            betas=(0.9, 0.999)
+            param_groups,
+            weight_decay=self.cfg.WEIGHT_DECAY
         )
+
     
     def _build_scheduler(self):
         sched = self.cfg.SCHEDULER_TYPE.lower()
@@ -81,42 +120,21 @@ class Trainer:
             raise ValueError(f"Unknown scheduler: {sched}")
         
     def _handle_freeze_unfreeze(self, epoch):
-        # freeze trong các epoch đầu
-        if self.freeze_epochs > 0:
-            if epoch < self.freeze_epochs:
-                if not self.model.spatial_frozen:
-                    print(f"[INFO] Re-freezing backbone at epoch {epoch}")
-                    self.model.freeze_spatial_backbone(True)
-
-            else:
-                # đủ số epoch → unfreeze
-                if self.model.spatial_frozen:
-                    print(f"[INFO] Unfreezing backbone at epoch {epoch}")
-                    self.model.freeze_spatial_backbone(False)
-        
-    def _check_freeze_state_change(self):
-        """Rebuild optimizer when model.spatial_frozen is toggled"""
-        current_state = self.model.spatial_frozen
-
-        if not hasattr(self, "_last_freeze_state"):
-            self._last_freeze_state = current_state
+        if self.freeze_epochs <= 0:
             return
 
-        if current_state != self._last_freeze_state:
-            print(f"[INFO] Detected freeze state change → Rebuilding optimizer...")
+        if epoch < self.freeze_epochs:
+            if not self.model.spatial_frozen:
+                print(f"[INFO] Freezing backbone at epoch {epoch}")
+                self.model.freeze_spatial_backbone(True)
+        else:
+            if self.model.spatial_frozen:
+                print(f"[INFO] Unfreezing backbone at epoch {epoch}")
+                self.model.freeze_spatial_backbone(False)
 
-            # Rebuild optimizer
-            self.optimizer = self._build_optimizer()
-
-            # Reset LR scheduler
-            self.scheduler = self._build_scheduler()
-
-            self._last_freeze_state = current_state
 
     def train_epoch(self, epoch: int):
         self._handle_freeze_unfreeze(epoch)
-        # Detect freeze/unfreeze change
-        self._check_freeze_state_change()
 
         self.model.train()
         self.train_metrics.reset()
@@ -131,9 +149,10 @@ class Trainer:
                 with autocast('cuda'):
                     outputs = self.model(images)
                     loss = self.criterion(outputs, labels)
-                self.scaler.scale(loss).backward()
 
+                self.scaler.scale(loss).backward()
                 self.scaler.unscale_(self.optimizer)
+                
                 torch.nn.utils.clip_grad_norm_(
                     [p for p in self.model.parameters() if p.requires_grad], 5.0
                 )

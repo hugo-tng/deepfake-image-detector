@@ -1,10 +1,38 @@
 import pandas as pd
+import random
+import io
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
 
-def get_transforms(img_size=224):
+class AddGaussianNoise:
+    def __init__(self, mean=0., std=0.01):
+        self.mean = mean
+        self.std = std
+
+    def __call__(self, tensor):
+        noise = torch.randn_like(tensor) * self.std + self.mean
+        tensor = tensor + noise
+        return torch.clamp(tensor, 0.0, 1.0)
+
+class JPEGCompression:
+    def __init__(self, quality_range=(70, 95)):
+        self.quality_range = quality_range
+    
+    def __call__(self, img):
+        
+        if isinstance(img, torch.Tensor):
+            img = transforms.ToPILImage()(img)
+        
+        quality = random.randint(*self.quality_range)
+        with io.BytesIO() as buffer:
+            img.save(buffer, format='JPEG', quality=quality)
+            buffer.seek(0)
+            return Image.open(buffer).convert("RGB")
+    
+
+def get_transforms(img_size=240):
     """
     Trả về dictionary chứa transform cho train và val/test
     """
@@ -16,15 +44,41 @@ def get_transforms(img_size=224):
 
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize(int(img_size * 1.15)),
+            transforms.RandomCrop(img_size),
+
             transforms.RandomHorizontalFlip(p=0.5),
-            transforms.RandomAffine(degrees=15, translate=(0.1, 0.1), scale=(0.9, 1.1)),
-            transforms.ColorJitter(brightness=0.2, contrast=0.2),
+
+            # JPEG compression (deepfake-realistic)
+            transforms.RandomApply([
+                JPEGCompression(quality_range=(70, 95))
+            ], p=0.3),
+
+            # Color augmentation (spatial robustness)
+            transforms.ColorJitter(
+                brightness=0.4,
+                contrast=0.4,
+                saturation=0.2,
+                hue=0.05
+            ),
+
+            # Blur (camera / codec artifact)
+            transforms.RandomApply([
+                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))
+            ], p=0.25),
+
             transforms.ToTensor(),
+
+            # Sensor noise (rất nhẹ)
+            transforms.RandomApply([
+                AddGaussianNoise(std=0.01)
+            ], p=0.1),
+            
             normalize
         ]),
         'val': transforms.Compose([
-            transforms.Resize((img_size, img_size)),
+            transforms.Resize(img_size),
+            transforms.CenterCrop(img_size),
             transforms.ToTensor(),
             normalize
         ]),
@@ -58,20 +112,11 @@ class DeepFakeDataset(Dataset):
             # Load ảnh
             image = Image.open(img_path).convert("RGB")
 
-            if image is None:
-                raise ValueError(f"Không thể tải ảnh tại đường dẫn: {img_path}")
-
-
-            # Áp dụng transform
-            if self.transform:
-                image = self.transform(image)
-
-            return image, torch.tensor(label, dtype=torch.long)
         except Exception as e:
-            print(f"Lỗi khi xử lý ảnh {img_path}: {e}")
-            
-            # Trả về một ảnh rỗng và nhãn -1 để đánh dấu lỗi
-            dummy_image = Image.new("RGB", (224, 224))  # Kích thước tùy ý
-            if self.transform:
-                dummy_image = self.transform(dummy_image)
-            return dummy_image, torch.tensor(-1, dtype=torch.long)
+           raise RuntimeError(f"Lỗi load ảnh: {img_path}") from e
+        
+        # Áp dụng transform
+        if self.transform:
+            image = self.transform(image)
+
+        return image, torch.tensor(label, dtype=torch.long)
