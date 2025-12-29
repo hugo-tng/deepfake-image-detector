@@ -8,10 +8,6 @@ class FaceCropper:
     """
     Wrapper class cho việc cắt khuôn mặt.
     Hiện tại sử dụng: Haar Cascade (Legacy method).
-    
-    Design Pattern: 
-    Sau này nếu đổi sang YuNet hay RetinaFace, chỉ cần sửa logic trong hàm `__call__`,
-    không cần sửa code bên Inference.
     """
 
     def __init__(
@@ -73,7 +69,7 @@ class FaceCropper:
             # Lấy mặt lớn nhất
             x, y, w, h = max(faces, key=lambda b: b[2] * b[3])
 
-            # Tính toán Zoom & Crop (Logic cũ của bạn)
+            # Tính toán Zoom & Crop
             face_size = max(w, h)
             desired_face_size = self.target_face_ratio * self.out_size
             zoom_factor = desired_face_size / face_size
