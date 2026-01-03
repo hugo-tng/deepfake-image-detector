@@ -3,7 +3,7 @@ import os
 import random
 import numpy as np
 from models.detector import DeepfakeDetector
-from utils.config import TrainingConfig
+from utils.config import TrainingConfig, GlobalConfig
 
 def set_seed(seed: int = 42, deterministic: bool = True):
     """
@@ -53,15 +53,15 @@ def build_model(config: TrainingConfig):
     """
     # Sử dụng mode từ tham số hoặc từ config
     selected_mode = config.MODE
-    
-    print(f"🛠️ Building Model | Mode: {selected_mode} | Device: {config.DEVICE}")
-    
+
+    print(f"🛠️ Building Model | Mode: {selected_mode} | Device: {GlobalConfig.DEVICE}")
+
     model = DeepfakeDetector(
         mode=selected_mode,
         **config.MODEL_CONFIG
     )
-    
-    model.to(config.DEVICE)
+
+    model.to(GlobalConfig.DEVICE)
     return model
 
 def load_weights(model, config: TrainingConfig):
@@ -107,7 +107,7 @@ def load_weights(model, config: TrainingConfig):
         print(f"Error detail: {e}")
         model.load_state_dict(new_state_dict, strict=False)
         
-    model.to(config.DEVICE)
+    model.to(GlobalConfig.DEVICE)
     model.eval() # chuyển sang eval mode khi load
     
     print("✅ Weights loaded successfully!")

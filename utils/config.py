@@ -28,6 +28,7 @@ class GlobalConfig:
     CROP_SIZE = 256
     RANDOM_SEED = 42
     NUM_WORKERS = 0
+    BATCH_SIZE = 16
 
 
 
@@ -63,7 +64,6 @@ class TrainingConfig:
 
         # --- Hyperparameters ---
         self.NUM_EPOCHS = 10
-        self.BATCH_SIZE = 16
         self.LEARNING_RATE = 1e-4
         self.WEIGHT_DECAY = 3e-4
         self.FREEZE_EPOCHS = 3

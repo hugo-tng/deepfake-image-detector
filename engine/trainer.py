@@ -230,9 +230,10 @@ class Trainer:
         self.history['val_recall'].append(val_metrics['recall'])
         self.history['val_f1'].append(val_metrics['f1'])
         
-        self.history['learning_rates'].append(
-            self.optimizer.param_groups[0]['lr']
-        )
+        self.history['learning_rates'].append([
+            pg['lr'] for pg in self.optimizer.param_groups
+        ])
+
 
     def _print_epoch_summary(self, epoch: int, train_metrics: dict, val_metrics: dict):
         """Print epoch summary with comprehensive metrics"""
