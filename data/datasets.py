@@ -1,10 +1,12 @@
 import pandas as pd
 import random
-import io
+import cv2
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
+
 
 class AddGaussianNoise:
     def __init__(self, mean=0., std=0.01):
@@ -19,17 +21,29 @@ class AddGaussianNoise:
 class JPEGCompression:
     def __init__(self, quality_range=(70, 95)):
         self.quality_range = quality_range
-    
+
     def __call__(self, img):
-        
-        if isinstance(img, torch.Tensor):
-            img = transforms.ToPILImage()(img)
-        
+        # Chọn ngẫu nhiên quality trong range
         quality = random.randint(*self.quality_range)
-        with io.BytesIO() as buffer:
-            img.save(buffer, format='JPEG', quality=quality)
-            buffer.seek(0)
-            return Image.open(buffer).convert("RGB")
+
+        # Nếu input là PIL Image -> Convert sang Numpy (OpenCV)
+        if isinstance(img, Image.Image):
+            img_np = np.asarray(img)
+            
+            img_np = cv2.cvtColor(img_np, cv2.COLOR_RGB2BGR)
+        elif isinstance(img, np.ndarray):
+            img_np = img
+        else:
+            return img # Fallback nếu format lạ
+        
+        # Áp dụng nén JPEG với OpenCV
+        encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), quality]
+        _, encimg = cv2.imencode('.jpg', img_np, encode_param)
+        decimg = cv2.imdecode(encimg, cv2.IMREAD_COLOR)
+
+        # Convert ngược lại PIL để tương thích torchvision
+        decimg = cv2.cvtColor(decimg, cv2.COLOR_BGR2RGB)
+        return Image.fromarray(decimg)
     
 
 def get_transforms(img_size=240):
@@ -89,27 +103,33 @@ def get_transforms(img_size=240):
     }
     return data_transforms
 
+# Dataset cho DeepFake
 class DeepFakeDataset(Dataset):
     def __init__(self, data: pd.DataFrame, transform=None):
         """
         data: pandas DataFrame chứa đường dẫn ảnh và nhãn
         transform: torchvision transforms
         """
-        self.data = data
+        self.paths = data["path"].tolist()
+        self.labels = data["label"].tolist()
         self.transform = transform
 
     def __len__(self):
-        return len(self.data)
+        return len(self.paths)
 
     def __getitem__(self, idx):
-        # Lấy row
-        row = self.data.iloc[idx]
-        img_path = row["path"]
-        label = row["label"]
+        # Lấy đường dẫn ảnh và nhãn
+        img_path = self.paths[idx]
+        label = self.labels[idx]
 
         try:
             # Load ảnh
-            image = Image.open(img_path).convert("RGB")
+            img = cv2.imread(img_path)
+            if img is None:
+                raise RuntimeError(f"Không thể đọc ảnh: {img_path}")
+            
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            image = Image.fromarray(img)
 
         except Exception as e:
            raise RuntimeError(f"Lỗi load ảnh: {img_path}") from e
@@ -118,4 +138,4 @@ class DeepFakeDataset(Dataset):
         if self.transform:
             image = self.transform(image)
 
-        return image, torch.tensor(label, dtype=torch.long)
+        return image, label

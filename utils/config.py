@@ -27,7 +27,7 @@ class GlobalConfig:
     IMG_SIZE = 240
     CROP_SIZE = 256
     RANDOM_SEED = 42
-    NUM_WORKERS = 0
+    NUM_WORKERS = 2
     BATCH_SIZE = 16
 
 

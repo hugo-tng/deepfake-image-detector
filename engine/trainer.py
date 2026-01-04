@@ -145,7 +145,9 @@ class Trainer:
         pbar = tqdm(self.train_loader, desc=f"Epoch {epoch+1}/{self.cfg.NUM_EPOCHS}")
 
         for batch_idx, (images, labels) in enumerate(pbar):
-            images, labels = images.to(self.device), labels.to(self.device)
+            images = images.to(self.device, non_blocking=True)
+            labels = labels.to(self.device, non_blocking=True)
+
             self.optimizer.zero_grad(set_to_none=True)
 
             if self.cfg.USE_AMP:
@@ -156,9 +158,11 @@ class Trainer:
                 self.scaler.scale(loss).backward()
                 self.scaler.unscale_(self.optimizer)
                 
-                torch.nn.utils.clip_grad_norm_(
-                    [p for p in self.model.parameters() if p.requires_grad], 1.0
-                )
+                if batch_idx % 2 == 0:
+                    torch.nn.utils.clip_grad_norm_(
+                        [p for p in self.model.parameters() if p.requires_grad], 1.0
+                    )
+
                 self.scaler.step(self.optimizer)
                 self.scaler.update()
 
