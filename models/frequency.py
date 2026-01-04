@@ -141,7 +141,7 @@ class FrequencyBranch(nn.Module):
             nn.Dropout(dropout * 0.5)
         )
 
-    def _make_block(self, in_channels, out_channels, dropout):
+    def _make_block(self, in_channels: int, out_channels: int, dropout: float) -> nn.Sequential:
         """Create a convolutional block"""
         return nn.Sequential(
             nn.Conv2d(in_channels, out_channels, 3, padding=1),
@@ -154,7 +154,7 @@ class FrequencyBranch(nn.Module):
             nn.MaxPool2d(2, 2)
         )
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """
         x: (B, C, H, W)
         Returns: (B, output_dim)

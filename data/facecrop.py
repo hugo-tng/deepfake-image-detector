@@ -7,7 +7,6 @@ from typing import Union, Optional
 class FaceCropper:
     """
     Wrapper class cho việc cắt khuôn mặt.
-    Hiện tại sử dụng: Haar Cascade (Legacy method).
     """
 
     def __init__(

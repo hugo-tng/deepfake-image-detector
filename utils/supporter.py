@@ -46,7 +46,7 @@ def build_model(config: TrainingConfig):
     
     Args:
         config: Class TrainingConfig chứa cấu hình
-        mode (str, optional): Nếu muốn override mode trong config (vd: test nhánh lẻ)
+        mode (str, optional): Nếu muốn override mode trong config
     
     Returns:
         model: Mô hình đã được đẩy lên Device (GPU/CPU)

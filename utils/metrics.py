@@ -31,7 +31,7 @@ class MetricsTracker:
         self.losses.append(loss)
     
     def _get_preds_targets_numpy(self) -> Tuple[np.ndarray, np.ndarray]:
-        """Helper: Nối (concat) tất cả tensor và chuyển về CPU/Numpy MỘT LẦN"""
+        """Helper: Nối (concat) tất cả tensor và chuyển về CPU/Numpy"""
         if not self.predictions:
             return np.array([]), np.array([])
         

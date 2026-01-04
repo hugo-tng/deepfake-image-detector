@@ -82,7 +82,7 @@ def get_transforms(img_size=240):
 
             transforms.ToTensor(),
 
-            # Sensor noise (rất nhẹ)
+            # Sensor noise
             transforms.RandomApply([
                 AddGaussianNoise(std=0.01)
             ], p=0.1),
