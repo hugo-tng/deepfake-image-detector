@@ -85,7 +85,7 @@ def load_weights(model, config: TrainingConfig):
     print(f"🔄 Loading weights from: {checkpoint_path}")
     
     # Load checkpoint
-    checkpoint = torch.load(checkpoint_path, map_location=config.DEVICE)
+    checkpoint = torch.load(checkpoint_path, map_location=GlobalConfig.DEVICE)
     
     # Lấy state_dict
     if 'model_state_dict' in checkpoint:

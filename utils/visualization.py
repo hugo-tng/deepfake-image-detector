@@ -32,12 +32,34 @@ def plot_training_history(history_dict, save_dir, show=True):
     axes[0, 1].legend()
     axes[0, 1].grid(True, alpha=0.3)
     
-    # 3. Plot Learning Rate
-    axes[1, 0].plot(epochs, history_dict['learning_rates'], color='purple', marker='x')
+    # 3. Plot Learning Rate(s)
+    lrs = history_dict['learning_rates']
+
+    # Backbone = group 0
+    backbone_lr = [epoch_lr[0] for epoch_lr in lrs]
+
+    # Other groups (assume same LR): take group 1
+    other_lr = [epoch_lr[1] for epoch_lr in lrs]
+
+    axes[1, 0].plot(
+        epochs,
+        backbone_lr,
+        marker='x',
+        label='Backbone LR'
+    )
+
+    axes[1, 0].plot(
+        epochs,
+        other_lr,
+        marker='o',
+        label='Projection + FFT + Fusion LR'
+    )
+
     axes[1, 0].set_title('Learning Rate Schedule')
     axes[1, 0].set_xlabel('Epoch')
     axes[1, 0].set_ylabel('Learning Rate')
     axes[1, 0].set_yscale('log')
+    axes[1, 0].legend()
     axes[1, 0].grid(True, alpha=0.3)
     
     # 4. Text Info (Tổng kết)
