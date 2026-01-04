@@ -73,8 +73,20 @@ def predict_image(models_list, image_path):
     print("-" * 100)
 
     for row in results_data:
-        print(f"{row['Model Name']:<25} | {row['Prediction']:<12} | {row['Confidence']:<12} | {row['Fake Prob']:<12}" +
-              f" | {row['Spatial Weight']:<12} | {row['Frequency Weight']:<12}")
+        spatial_w = row.get('Spatial Weight', None)
+        freq_w = row.get('Frequency Weight', None)
+
+        spatial_w = f"{spatial_w:.4f}" if isinstance(spatial_w, (float, int)) else "_"
+        freq_w = f"{freq_w:.4f}" if isinstance(freq_w, (float, int)) else "_"
+
+        print(
+            f"{row.get('Model Name', '_'):<25} | "
+            f"{row.get('Prediction', '_'):<12} | "
+            f"{row.get('Confidence', '_'):<12} | "
+            f"{row.get('Fake Prob', '_'):<12} | "
+            f"{spatial_w:<12} | "
+            f"{freq_w:<12}"
+        )
     
     print("-" * 100)
 
@@ -101,15 +113,25 @@ def model_predict(model, image_tensor, model_name):
         fake_prob = probs[0][LabelConfig.FAKE_IDX].item()
 
         # Lấy trọng số kết quả
-        spatial_w, freq_w = model.get_feature_importance(image_tensor)
+        spatial_w, freq_w = None, None
+
+        if hasattr(model, "get_feature_importance"):
+            try:
+                spatial_w, freq_w = model.get_feature_importance(image_tensor)
+
+                spatial_w = spatial_w.mean().item()
+                freq_w = freq_w.mean().item()
+
+            except Exception:
+                spatial_w, freq_w = None, None
 
         result = {
             "Model Name": model_name,
             "Prediction": label.upper(),
             "Confidence": f"{conf_score*100:.2f}%",
             "Fake Prob": f"{fake_prob*100:.2f}%",
-            "Spatial Weight": f"{spatial_w.mean().item():.4f}%",
-            "Frequency Weight": f"{freq_w.mean().item():.4f}%"
+            "Spatial Weight": spatial_w,
+            "Frequency Weight": freq_w
         }
 
     return result
