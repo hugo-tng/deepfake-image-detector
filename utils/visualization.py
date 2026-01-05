@@ -4,7 +4,7 @@ import numpy as np
 import itertools
 from sklearn.metrics import roc_curve, auc
 
-def plot_training_history(history_dict, save_dir, show=True):
+def plot_training_history(history_dict: dict, save_dir: str, show: bool = True):
     """
     Vẽ biểu đồ Loss, Accuracy và Learning Rate từ lịch sử huấn luyện.
     """

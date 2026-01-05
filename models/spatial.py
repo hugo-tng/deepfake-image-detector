@@ -28,7 +28,7 @@ class SpatialBranch(nn.Module):
         if model_name == 'efficientnet_b4':
             weights = EfficientNet_B4_Weights.IMAGENET1K_V1
             self.backbone = efficientnet_b4(weights=weights)
-            backbone_output_dim = 1792  # EfficientNet-B4 output
+            backbone_output_dim = 1792  
         elif model_name == 'efficientnet_b3':
             weights = EfficientNet_B3_Weights.IMAGENET1K_V1
             self.backbone = efficientnet_b3(weights=weights)
