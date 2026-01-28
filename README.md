@@ -30,35 +30,40 @@ Hai luồng thông tin được hợp nhất thông qua cơ chế **Residual Att
 ---
 config:
   layout: dagre
+  theme: base
   themeVariables:
     background: "#ffffff"
+    primaryColor: "#ffffff"
+    primaryBorderColor: "#000000"
+    primaryTextColor: "#000000"
+    lineColor: "#000000"
 ---
 flowchart LR
 
 %% ===== INPUT (CENTERED) =====
 subgraph InputStage[" "]
     direction TB
-    Input(["<b>Aligned &amp; Cropped Face</b><br><i>(RGB, 240×240)</i>"])
+    Input(["<b>Aligned & Cropped Face</b><br/><i>(RGB, 240×240)</i>"])
 end
 
 %% ===== FEATURE EXTRACTION =====
 subgraph FeatureExtraction["<b>FEATURE EXTRACTION</b>"]
     direction TB
-    Spatial["<b>Spatial Branch</b><br><i>(EfficientNet Backbone)</i>"]
-    Frequency["<b>Frequency Branch</b><br><i>(FFT + CNN)</i>"]
+    Spatial["<b>Spatial Branch</b><br/><i>(EfficientNet Backbone)</i>"]
+    Frequency["<b>Frequency Branch</b><br/><i>(FFT + CNN)</i>"]
 end
 
 %% ===== FEATURE FUSION =====
 subgraph FeatureFusion["<b>FEATURE FUSION</b>"]
     direction LR
-    Fusion["<b>Attention Fusion</b><br><i>(Learnable Gating)</i>"]
+    Fusion["<b>Attention Fusion</b><br/><i>(Learnable Gating)</i>"]
 end
 
 %% ===== CLASSIFICATION =====
 subgraph Classification["<b>CLASSIFICATION</b>"]
     direction LR
-    Classifier["<b>Classifier Head</b><br><i>(Prediction Layer)</i>"]
-    Output(["<b>Final Prediction</b><br><i>(Real vs. Fake)</i>"])
+    Classifier["<b>Classifier Head</b><br/><i>(Prediction Layer)</i>"]
+    Output(["<b>Final Prediction</b><br/><i>(Real vs. Fake)</i>"])
 end
 
 %% ===== CONNECTIONS =====
@@ -69,16 +74,21 @@ Frequency -- Frequency Features --> Fusion
 Fusion -- Fused Features --> Classifier
 Classifier -- Probabilities --> Output
 
-%% ===== STYLING =====
-style Input fill:#e1bee7,stroke:#4a148c,stroke-width:2px
-style Spatial fill:#bbdefb,stroke:#0d47a1,stroke-width:2px
-style Frequency fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
-style Fusion fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
-style Classifier fill:#ffccbc,stroke:#bf360c,stroke-width:2px
-style Output fill:#e1bee7,stroke:#4a148c,stroke-width:2px
+%% ===== STYLING (BLACK & WHITE) =====
+style Input fill:#ffffff,stroke:#000000,stroke-width:2.5px
 
-style FeatureExtraction fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
-style FeatureFusion fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
-style Classification fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
+style Spatial fill:#ffffff,stroke:#000000,stroke-width:2px
+style Frequency fill:#ffffff,stroke:#000000,stroke-width:2px
+
+style Fusion fill:#ffffff,stroke:#000000,stroke-width:3px
+
+style Classifier fill:#ffffff,stroke:#000000,stroke-width:2px
+style Output fill:#ffffff,stroke:#000000,stroke-width:2px
+
+style FeatureExtraction fill:#ffffff,stroke:#000000,stroke-width:1.5px,stroke-dasharray:6 4
+style FeatureFusion fill:#ffffff,stroke:#000000,stroke-width:1.5px,stroke-dasharray:6 4
+style Classification fill:#ffffff,stroke:#000000,stroke-width:1.5px,stroke-dasharray:6 4
+
 style InputStage fill:none,stroke:none
+
 ```
