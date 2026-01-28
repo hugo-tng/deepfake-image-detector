@@ -1,10 +1,9 @@
-# Deepfake Detection using Dual-Branch Hybrid Architecture
+# Phân biệt ảnh chân dung AI bằng phương pháp học sâu - Kiến trúc lai nhánh
 
 ![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
 ![PyTorch](https://img.shields.io/badge/PyTorch-1.13%2B-red)
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Status](https://img.shields.io/badge/Status-In%20Progress-blue)
-
 
 ## Giới thiệu (Introduction)
 
@@ -24,3 +23,35 @@ Hai luồng thông tin được hợp nhất thông qua cơ chế **Residual Att
 - **Robust Preprocessing:** Tích hợp mô phỏng nén ảnh (JPEG Compression) và nhiễu (Gaussian Noise) để tăng độ bền vững.
 - **Two-stage Training:** Chiến lược huấn luyện 2 giai đoạn (Frozen & Fine-tuning) giúp hội tụ ổn định.
 - **High Performance:** Đạt độ chính xác >99% trên tập dữ liệu kiểm thử hỗn hợp.
+
+## Kiến trúc hệ thống (System Architecture)
+
+```mermaid
+---
+
+config:
+  layout: dagre
+  theme: base
+  themeVariables:
+    background: "#ffffff"
+---
+flowchart TB
+ subgraph FeatureExtraction["<b>Feature Extraction Stage</b>"]
+    direction LR
+        Spatial["<b>Spatial Branch</b><br><i>(EfficientNet Backbone)</i>"]
+        Frequency["<b>Frequency Branch</b><br><i>(FFT + CNN)</i>"]
+  end
+    Input(["<b>Aligned &amp; Cropped Face</b><br><i>(RGB, 240x240)</i>"]) -- Raw Pixels --> Spatial & Frequency
+    Spatial -- Spatial Features --> Fusion["<b>Attention Fusion</b><br><i>(Learnable Gating)</i>"]
+    Frequency -- Frequency Features --> Fusion
+    Fusion -- Fused Features --> Classifier["<b>Classifier Head</b><br><i>(Prediction Layer)</i>"]
+    Classifier -- Probabilities --> Output(["<b>Final Prediction</b><br><i>(Real vs. Fake)</i>"])
+
+    style Spatial fill:#bbdefb,stroke:#0d47a1,stroke-width:2px
+    style Frequency fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
+    style Input fill:#e1bee7,stroke:#4a148c,stroke-width:2px
+    style Fusion fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+    style Classifier fill:#ffccbc,stroke:#bf360c,stroke-width:2px
+    style Output fill:#e1bee7,stroke:#4a148c,stroke-width:2px
+    style FeatureExtraction fill:#f5f5f5,stroke:#333,stroke-dasharray: 5 5
+```
