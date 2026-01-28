@@ -28,30 +28,57 @@ Hai luồng thông tin được hợp nhất thông qua cơ chế **Residual Att
 
 ```mermaid
 ---
-
 config:
   layout: dagre
-  theme: base
   themeVariables:
     background: "#ffffff"
 ---
-flowchart TB
- subgraph FeatureExtraction["<b>Feature Extraction Stage</b>"]
-    direction LR
-        Spatial["<b>Spatial Branch</b><br><i>(EfficientNet Backbone)</i>"]
-        Frequency["<b>Frequency Branch</b><br><i>(FFT + CNN)</i>"]
-  end
-    Input(["<b>Aligned &amp; Cropped Face</b><br><i>(RGB, 240x240)</i>"]) -- Raw Pixels --> Spatial & Frequency
-    Spatial -- Spatial Features --> Fusion["<b>Attention Fusion</b><br><i>(Learnable Gating)</i>"]
-    Frequency -- Frequency Features --> Fusion
-    Fusion -- Fused Features --> Classifier["<b>Classifier Head</b><br><i>(Prediction Layer)</i>"]
-    Classifier -- Probabilities --> Output(["<b>Final Prediction</b><br><i>(Real vs. Fake)</i>"])
+flowchart LR
 
-    style Spatial fill:#bbdefb,stroke:#0d47a1,stroke-width:2px
-    style Frequency fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
-    style Input fill:#e1bee7,stroke:#4a148c,stroke-width:2px
-    style Fusion fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
-    style Classifier fill:#ffccbc,stroke:#bf360c,stroke-width:2px
-    style Output fill:#e1bee7,stroke:#4a148c,stroke-width:2px
-    style FeatureExtraction fill:#f5f5f5,stroke:#333,stroke-dasharray: 5 5
+%% ===== INPUT (CENTERED) =====
+subgraph InputStage[" "]
+    direction TB
+    Input(["<b>Aligned &amp; Cropped Face</b><br><i>(RGB, 240×240)</i>"])
+end
+
+%% ===== FEATURE EXTRACTION =====
+subgraph FeatureExtraction["<b>FEATURE EXTRACTION</b>"]
+    direction TB
+    Spatial["<b>Spatial Branch</b><br><i>(EfficientNet Backbone)</i>"]
+    Frequency["<b>Frequency Branch</b><br><i>(FFT + CNN)</i>"]
+end
+
+%% ===== FEATURE FUSION =====
+subgraph FeatureFusion["<b>FEATURE FUSION</b>"]
+    direction LR
+    Fusion["<b>Attention Fusion</b><br><i>(Learnable Gating)</i>"]
+end
+
+%% ===== CLASSIFICATION =====
+subgraph Classification["<b>CLASSIFICATION</b>"]
+    direction LR
+    Classifier["<b>Classifier Head</b><br><i>(Prediction Layer)</i>"]
+    Output(["<b>Final Prediction</b><br><i>(Real vs. Fake)</i>"])
+end
+
+%% ===== CONNECTIONS =====
+Input -- Raw Pixels --> Spatial
+Input -- Raw Pixels --> Frequency
+Spatial -- Spatial Features --> Fusion
+Frequency -- Frequency Features --> Fusion
+Fusion -- Fused Features --> Classifier
+Classifier -- Probabilities --> Output
+
+%% ===== STYLING =====
+style Input fill:#e1bee7,stroke:#4a148c,stroke-width:2px
+style Spatial fill:#bbdefb,stroke:#0d47a1,stroke-width:2px
+style Frequency fill:#c8e6c9,stroke:#1b5e20,stroke-width:2px
+style Fusion fill:#fff9c4,stroke:#fbc02d,stroke-width:2px
+style Classifier fill:#ffccbc,stroke:#bf360c,stroke-width:2px
+style Output fill:#e1bee7,stroke:#4a148c,stroke-width:2px
+
+style FeatureExtraction fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
+style FeatureFusion fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
+style Classification fill:#fcfcfc,stroke:#999,stroke-width:1.5px,stroke-dasharray:5 5
+style InputStage fill:none,stroke:none
 ```
