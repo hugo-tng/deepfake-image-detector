@@ -1,171 +1,111 @@
-# Phân biệt ảnh chân dung AI bằng phương pháp học sâu - Kiến trúc lai nhánh
+﻿# Phát hiện ảnh chân dung do AI bằng học sâu
 
-> **Lưu ý:** Có bản tiếng Anh ở [`README.md`](README.md).
+> English version: [README.md](README.md)
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue)
-![PyTorch](https://img.shields.io/badge/PyTorch-1.13%2B-red)
-![License](https://img.shields.io/badge/License-Educational-blue)
-![Status](https://img.shields.io/badge/status-Completed-brightgreen)
+![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
+![PyTorch](https://img.shields.io/badge/PyTorch-2.5%2B-red)
+![Trạng thái](https://img.shields.io/badge/trang_thai-nghiên_cứu-green)
+![Giấy phép](https://img.shields.io/badge/license-giáo_dục-orange)
 
-## Giới thiệu (Introduction)
+Dự án nghiên cứu PyTorch phân loại ảnh chân dung thành **người thật** hoặc **do AI tạo**. Dự án so sánh các mô hình một nhánh với mô hình lai kết hợp đặc trưng không gian và tần số.
 
-Dự án này đề xuất một kiến trúc học sâu mới (**Hybrid Asymmetric Architecture**) nhằm giải quyết thách thức trong việc phát hiện ảnh Deepfake chất lượng cao.
+## Mục lục
 
-Thay vì chỉ dựa vào thông tin hình ảnh (RGB), mô hình kết hợp song song hai luồng xử lý:
+- [Giới thiệu](#giới-thiệu)
+- [Tính năng chính](#tính-năng-chính)
+- [Dữ liệu](#dữ-liệu)
+- [Kiến trúc mô hình](#kiến-trúc-mô-hình)
+- [Cấu trúc dự án](#cấu-trúc-dự-án)
+- [Cài đặt](#cài-đặt)
+- [Cách sử dụng](#cách-sử-dụng)
+- [Tóm tắt kết quả](#tóm-tắt-kết-quả)
+- [Artifact và cấu hình](#artifact-và-cấu-hình)
 
-1.  **Spatial Branch (Miền không gian):** Sử dụng EfficientNet-B1 để nắm bắt ngữ nghĩa và cấu trúc khuôn mặt.
-2.  **Frequency Branch (Miền tần số):** Sử dụng biến đổi Fourier (FFT) và các bộ lọc thông cao để phát hiện các dấu vết nhân tạo (artifacts) bất thường mà mắt thường không thấy được.
+## Giới thiệu
 
-Hai luồng thông tin được hợp nhất thông qua cơ chế **Residual Attention Fusion**, cho phép mô hình tự động học trọng số tối ưu cho từng nhánh.
+Ảnh chân dung do AI tạo có thể rất giống ảnh chụp. Dự án khảo sát việc kết hợp cấu trúc hình ảnh với các mẫu trong miền tần số có giúp phân biệt ảnh thật và ảnh tạo hay không. Mã nguồn bao gồm chuẩn bị dữ liệu, huấn luyện, đánh giá, suy luận mẫu và trực quan hóa bằng notebook Jupyter cùng các module Python.
 
-## Tính năng nổi bật (Key Features)
+## Tính năng chính
 
-- **Multi-modal Analysis:** Kết hợp phân tích đa miền (Spatial + Frequency).
-- **Asymmetric Design:** Thiết kế bất đối xứng (Spatial 512-dim, Frequency 256-dim) giúp tối ưu hóa tài nguyên tính toán và giảm nhiễu.
-- **Robust Preprocessing:** Tích hợp mô phỏng nén ảnh (JPEG Compression) và nhiễu (Gaussian Noise) để tăng độ bền vững.
-- **Two-stage Training:** Chiến lược huấn luyện 2 giai đoạn (Frozen & Fine-tuning) giúp hội tụ ổn định.
-- **High Performance:** Đạt độ chính xác >98% trên tập dữ liệu kiểm thử hỗn hợp (Accuracy 98.15%, Recall 99.55%, F1-Score 98.18%, AUC-ROC 0.998 trên tập test 4000 ảnh).
+- **Hai nhánh bổ trợ:** EfficientNet-B1 trích xuất đặc trưng không gian; CNN dựa trên FFT phân tích đặc trưng tần số.
+- **Attention fusion bất đối xứng:** hợp nhất 512 đặc trưng không gian và 256 đặc trưng tần số bằng cổng học theo từng chiều.
+- **So sánh baseline:** hỗ trợ mô hình chỉ dùng không gian, chỉ dùng tần số, hybrid bất đối xứng và hybrid đối xứng (512 + 512).
+- **Quy trình huấn luyện:** chuẩn hóa ImageNet, crop/lật và biến đổi màu, nén JPEG, nhiễu Gaussian; đóng băng backbone không gian lúc khởi động rồi fine-tune, early stopping theo F1 validation.
+- **Artifact đánh giá:** lưu metrics, confusion matrix, ROC curve, lịch sử huấn luyện và checkpoint.
 
-## Dữ liệu (Dataset)
+## Dữ liệu
 
-**Kích thước dữ liệu:** 20.000 ảnh cân bằng (50% real từ CelebAMask-HQ, 50% fake từ StyleGAN/Stable Diffusion/RealVisXL/Gemini)
+Dự án dùng ảnh chân dung thật và ảnh do AI tạo. Notebook chuẩn bị dữ liệu crop/resize ảnh rồi tạo các CSV train, validation và test theo phân tầng. Nhãn là `0 = Real`, `1 = Fake`.
 
-### Bộ dữ liệu sử dụng:
+Notebook tham chiếu [AI-image-detection-FAKE](https://huggingface.co/datasets/fcsn37/AI-image-detection-FAKE) và [AI-image-detection-REAL](https://huggingface.co/datasets/fcsn37/AI-image-detection-REAL). Nguồn gốc và quyền sử dụng phụ thuộc bộ dữ liệu gốc; hãy kiểm tra điều khoản trước khi dùng lại hoặc phân phối.
 
-**1. Tập dữ liệu ảnh giả:**
+## Kiến trúc mô hình
 
-- **Nguồn:** Hugging Face
-- **Liên kết:** https://huggingface.co/datasets/fcsn37/AI-image-detection-FAKE
-- **Mô tả:** Bao gồm các ảnh khuôn mặt được tạo sinh bởi nhiều mô hình AI khác nhau, phản ánh đa dạng phong cách và đặc trưng tạo sinh
+Mô hình lai kết hợp hai góc nhìn của ảnh RGB 240 × 240: EfficientNet-B1 trích xuất đặc trưng không gian, còn FFT kết hợp CNN trích xuất đặc trưng tần số. Attention gate hợp nhất hai nhánh trước khi bộ phân loại dự đoán Real hoặc Fake.
 
-**2. Tập dữ liệu ảnh thật:**
+![Sơ đồ kiến trúc mô hình](assets/model_architecture.svg)
 
-- **Nguồn:** Hugging Face
-- **Liên kết:** https://huggingface.co/datasets/fcsn37/AI-image-detection-REAL
-- **Mô tả:** Gồm các ảnh khuôn mặt tự nhiên, chất lượng cao, được chọn lọc và tiền xử lý nhằm đảm bảo tính nhất quán và độ tin cậy
+Xem [`diagram_code.md`](diagram_code.md) để biết sơ đồ Mermaid chi tiết.
 
-### Mục đích sử dụng:
+## Cấu trúc dự án
 
-Các tập dữ liệu được sử dụng phục vụ **nghiên cứu học thuật**, **huấn luyện và đánh giá mô hình** phân loại ảnh thật – giả. Không sử dụng cho mục đích thương mại hay vi phạm đạo đức dữ liệu.
-
-## Kiến trúc mô hình (Model Architecture)
-
-![Model Architecture](assets/model_architecture.svg)
-
-Kiến trúc gồm ba giai đoạn chính:
-
-### 1. Feature Extraction (Trích xuất đặc trưng)
-
-- **Spatial Branch:** EfficientNet-B1 xử lý ảnh RGB gốc để nắm bắt đặc trưng không gian
-- **Frequency Branch:** FFT + CNN xử lý phổ tần số để phát hiện anomalies
-
-### 2. Feature Fusion (Hợp nhất đặc trưng)
-
-- **Attention Fusion:** Cơ chế gating học được để tối ưu trọng số từng nhánh
-
-### 3. Classification (Phân loại)
-
-- **Classifier Head:** Lớp phân loại cuối cùng dự đoán Real vs. Fake
-
-> **Xem chi tiết kiến trúc:** Tham khảo file [diagram_code.md](diagram_code.md) để xem các sơ đồ Mermaid mô tả chi tiết từng thành phần của mô hình
-
-## Cấu trúc dự án (Project Structure)
-
-```
+```text
 Source/
-├── models/                  # Các mô hình neural network
-│   ├── spatial.py          # Spatial branch (EfficientNet)
-│   ├── frequency.py        # Frequency branch (FFT + CNN)
-│   ├── fusion.py           # Attention fusion mechanism
-│   └── detector.py         # Model detector & utilities
-│
-├── engine/                  # Các module huấn luyện và đánh giá
-│   ├── trainer.py          # Training loop
-│   ├── evaluator.py        # Evaluation metrics & validation
-│   └── inference.py        # Inference utilities
-│
-├── data/                    # Xử lý dữ liệu
-│   ├── datasets.py         # Dataset loaders
-│   ├── loader.py           # Data loading utilities
-│   └── facecrop.py         # Face cropping preprocessing
-│
-├── utils/                   # Các hàm tiện ích
-│   ├── config.py           # Configuration management
-│   ├── metrics.py          # Custom metrics
-│   ├── supporter.py        # Helper functions
-│   └── visualization.py    # Visualization utilities
-│
-├── notebooks/              # Jupyter notebooks
-│   ├── 01_DataPrepare.ipynb         # Data preparation
-│   ├── 02_TrainingModel.ipynb       # Model training
-│   ├── 03_ModelTesting.ipynb        # Model evaluation
-│   ├── 04_VisualizeExample.ipynb    # Results visualization
-│   └── FaceCrop.ipynb              # Face cropping examples
-│
-├── assets/                 # Ảnh và tài nguyên đồ họa
-├── requirements.txt        # Dependencies
-├── README.md              # Documentation
-└── diagram_code.md        # Architecture diagrams
+├── assets/                 # Sơ đồ kiến trúc
+├── data/                   # Dataset, biến đổi ảnh, loader, crop mặt
+├── engine/                 # Huấn luyện, đánh giá, suy luận
+├── models/                 # Module không gian, tần số, fusion, detector
+├── notebooks/              # Chuẩn bị dữ liệu, huấn luyện, kiểm tra, trực quan
+├── utils/                  # Cấu hình, metrics, checkpoint, biểu đồ
+├── diagram_code.md         # Sơ đồ Mermaid chi tiết
+├── requirements.txt
+├── README.md
+└── README_vi.md
 ```
 
-## Cài đặt (Installation)
+## Cài đặt
 
-### Yêu cầu hệ thống
-
-- Python 3.8+
-- PyTorch 1.13+
-- OpenCV 4.10+
-- NumPy, Pandas, Scikit-learn
-- Matplotlib, Pillow
-
-### Cài đặt dependencies
+Dùng Python 3.10 trở lên trong virtual environment. Chạy lệnh từ `Source/`:
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+# Windows PowerShell: .venv\Scripts\Activate.ps1
+# macOS/Linux: source .venv/bin/activate
+python -m pip install -r requirements.txt
+python -m pip install jupyter
+jupyter lab
 ```
 
-## Hướng dẫn sử dụng (Usage)
+Mở Jupyter tại `Source/` để `system_path.py` tìm thấy module. Torchvision có thể tải trọng số EfficientNet ImageNet ở lần chạy đầu. Mã tự chọn CUDA nếu có, nếu không chạy bằng CPU. Nếu bản PyTorch được ghim không phù hợp phần cứng, hãy cài bản tương thích.
 
-### 1. Chuẩn bị dữ liệu
+## Cách sử dụng
 
-Xem [01_DataPrepare.ipynb](notebooks/01_DataPrepare.ipynb) để chuẩn bị và xử lý dữ liệu.
+Chạy notebook theo thứ tự khi cần:
 
-Sau khi chạy sẽ tạo thư mục `Split_Data`, chứa các file `train.csv`, `val.csv`, `test.csv` dùng cho huấn luyện và đánh giá.
+1. [`01_DataPrepare.ipynb`](notebooks/01_DataPrepare.ipynb) — kiểm tra, tiền xử lý và chia ảnh; chỉnh đường dẫn nguồn nếu cần.
+2. [`02_TrainingModel.ipynb`](notebooks/02_TrainingModel.ipynb) — huấn luyện bốn biến thể. Checkpoint và log được ghi vào `Outputs/<tên-mô-hình>/` ở thư mục gốc.
+3. [`03_ModelTesting.ipynb`](notebooks/03_ModelTesting.ipynb) — tải checkpoint tốt nhất và dự đoán ảnh mẫu. Thay các đường dẫn mẫu viết sẵn cho máy của bạn.
+4. [`04_VisualizeExample.ipynb`](notebooks/04_VisualizeExample.ipynb) — trực quan FFT và phổ tần số sau lọc; cập nhật đường dẫn ảnh mẫu.
 
-### 2. Huấn luyện mô hình
+`FaceCrop.ipynb` là notebook thử nghiệm riêng dùng Hugging Face/Google Colab. `TrainingModel Old ver.ipynb` là thí nghiệm cũ; dùng notebook huấn luyện được đánh số cho cấu hình hiện tại.
 
-Xem [02_TrainingModel.ipynb](notebooks/02_TrainingModel.ipynb) để huấn luyện mô hình.
+## Tóm tắt kết quả
 
-Huấn luyện mô hình với chiến lược 2 giai đoạn:
+Bảng được chép từ `Outputs/*/logs/evaluation_results/test_metrics.json`. Đây là kết quả đã lưu trên cùng tập test 4.000 ảnh; Fake là lớp dương khi tính precision, recall và F1. Kết quả không đảm bảo hiệu suất trên bộ dữ liệu khác.
 
-- Giai đoạn 1: Freeze backbone (3 epoch đầu)
-- Giai đoạn 2: Fine-tuning toàn bộ mô hình
+| Mô hình                         |   Accuracy |  Precision |     Recall |         F1 |    ROC AUC |
+| ------------------------------- | ---------: | ---------: | ---------: | ---------: | ---------: |
+| Không gian (EfficientNet-B1)    |     0.9793 |     0.9660 |     0.9935 |     0.9795 |     0.9975 |
+| Tần số (FFT-CNN)                |     0.8800 |     0.8172 |     0.9790 |     0.8908 |     0.9562 |
+| Hybrid bất đối xứng (512 + 256) | **0.9815** | **0.9684** | **0.9955** | **0.9818** | **0.9980** |
+| Hybrid đối xứng (512 + 512)     |     0.9768 |     0.9600 |     0.9950 |     0.9772 |     0.9973 |
 
-Checkpoint tốt nhất được lưu tự động.
+Trong các lần chạy đã lưu, hybrid bất đối xứng có accuracy, F1 và ROC AUC cao nhất. Mức cải thiện so với baseline không gian nhỏ và chỉ áp dụng cho tập chia này.
 
-### 3. Đánh giá mô hình
+## Artifact và cấu hình
 
-Xem [03_ModelTesting.ipynb](notebooks/03_ModelTesting.ipynb) để kiểm tra hiệu suất mô hình.
+`Outputs/` chứa checkpoint và kết quả trong bảng. Các thư mục `Outputs_*` ở thư mục gốc lưu những biến thể thí nghiệm khác. Đánh giá lưu JSON metrics, confusion matrix và ROC curve trong `logs/evaluation_results/` của từng mô hình. Đường dẫn dữ liệu và cấu hình mặc định nằm trong `utils/config.py`.
 
-Tính năng:
+## Giấy phép
 
-- Dự đoán ảnh đơn lẻ
-- Trả về nhãn (REAL/FAKE) và confidence score
-- Truyền đường dẫn ảnh vào biến `test_image_path`
-
-### Bảng kết quả
-
-Bảng dưới đây tóm tắt các chỉ số trên tập kiểm thử thu được trong quá trình huấn luyện (xem `02_TrainingModel.ipynb`):
-
-| Mô hình     | Accuracy | Precision | Recall | F1-score | AUC   |
-| ----------- | -------- | --------- | ------ | -------- | ----- |
-| Spatial     | 0.9815   | 0.980     | 0.9955 | 0.9818   | 0.998 |
-| Frequency   | 0.9700   | 0.968     | 0.9900 | 0.978    | 0.995 |
-| Hybrid Asym | 0.9850   | 0.984     | 0.9970 | 0.990    | 0.999 |
-| Hybrid Sym  | 0.9840   | 0.982     | 0.9960 | 0.989    | 0.999 |
-
-Cấu hình lai không đối xứng (hybrid asymmetric) mang lại hiệu suất tổng thể tốt nhất, chứng minh việc kết hợp đặc trưng không gian và tần số cải thiện đáng kể. Các kết quả này có thể được tái tạo bằng cách chạy lại notebook và kiểm tra các file `evaluation_results/test_metrics.json`.
-
-### 4. Trực quan hóa kết quả
-
-Xem [04_VisualizeExample.ipynb](notebooks/04_VisualizeExample.ipynb) để xem các ví dụ chi tiết và trực quan hóa kết quả.
+Dự án được phát hành cho mục đích giáo dục và nghiên cứu theo các điều khoản trong [`LICENSE`](LICENSE).
