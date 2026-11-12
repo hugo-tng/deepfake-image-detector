@@ -9,18 +9,19 @@ from tqdm import tqdm
 import json
 
 from utils.metrics import MetricsTracker
-from utils.config import TrainingConfig, GlobalConfig
+from utils.config import TrainingConfig, ExperimentConfig, RuntimeConfig, GlobalConfig, _PROJECT
 
 class Trainer:
     """Main training class"""
     
-    def __init__(self, model, train_loader: DataLoader, val_loader: DataLoader, training_config: TrainingConfig):
+    def __init__(self, model, train_loader: DataLoader, val_loader: DataLoader, training_config: TrainingConfig | ExperimentConfig, runtime_config: RuntimeConfig | None = None):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
         self.cfg = training_config
 
-        self.device = GlobalConfig.DEVICE
+        self.runtime = runtime_config or _PROJECT.runtime
+        self.device = self.runtime.device
         self.model.to(self.device)
 
         self.freeze_epochs = getattr(self.cfg, "FREEZE_EPOCHS", 0)
@@ -62,7 +63,7 @@ class Trainer:
             if backbone_params:
                 param_groups.append({
                     "params": backbone_params,
-                    "lr": self.cfg.LEARNING_RATE * 0.1
+                    "lr": self.cfg.LEARNING_RATE * (self.cfg.training.backbone_lr_multiplier if isinstance(self.cfg, ExperimentConfig) else 0.1)
                 })
 
             # Projection 
@@ -105,7 +106,7 @@ class Trainer:
             return CosineAnnealingLR(
                 self.optimizer,
                 T_max=self.cfg.T_MAX,
-                eta_min=1e-6
+                eta_min=(self.cfg.training.scheduler_eta_min if isinstance(self.cfg, ExperimentConfig) else 1e-6)
             )
 
         elif sched in ["plateau", "reducelronplateau"]:

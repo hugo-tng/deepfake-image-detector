@@ -1,0 +1,31 @@
+schema_version: 1
+manual_download:
+  required: true
+  sources:
+    - name: AI-image-detection-FAKE
+      url: https://huggingface.co/datasets/fcsn37/AI-image-detection-FAKE
+      target: AI_Generated
+    - name: AI-image-detection-REAL
+      url: https://huggingface.co/datasets/fcsn37/AI-image-detection-REAL
+      target: Real
+  notice: Review each upstream dataset's licence and terms before downloading, using, or redistributing it.
+processed_dataset:
+  sub_dir: Face_Cropped
+  classes:
+    real: { path: Real, label: 0 }
+    fake: { path: Fake, label: 1 }
+splits:
+  sub_dir: Split_Data
+  required_columns: [path, label]
+  labels: [0, 1]
+  files:
+    train: { file: train.csv, rows: 14000, label_counts: { '0': 7000, '1': 7000 } }
+    validation: { file: val.csv, rows: 2000, label_counts: { '0': 1000, '1': 1000 } }
+    test: { file: test.csv, rows: 4000, label_counts: { '0': 2000, '1': 2000 } }
+historical_artifacts:
+  root: Outputs
+  experiments: [efficientnet, frequency, efficientnet_fft_asym, efficientnet_fft_sym]
+  expected_files: [checkpoints/best_model.pth, checkpoints/last_model.pth, logs/training_history.json, logs/evaluation_results/test_metrics.json]
+storage_policy:
+  dataset_and_weights: Keep outside the Source Git repository.
+  generated_outputs: Do not commit newly generated outputs or reports.

@@ -56,6 +56,8 @@ Source/
 ├── engine/                 # Training, evaluation, inference
 ├── models/                 # Spatial, frequency, fusion, detector modules
 ├── notebooks/              # Data prep, training, testing, visualization
+├── configs/                # Reference configuration and dataset manifest
+├── tools/                  # Read-only project configuration validator
 ├── utils/                  # Configuration, metrics, checkpoints, plots
 ├── diagram_code.md         # Detailed Mermaid diagrams
 ├── requirements.txt
@@ -78,6 +80,18 @@ jupyter lab
 
 Open Jupyter from `Source/` so `system_path.py` can locate the project modules. Torchvision may download EfficientNet ImageNet weights on first use. The code selects CUDA when available, otherwise CPU. Install a PyTorch build compatible with your hardware if the pinned build is unsuitable.
 
+### Clone and configuration check
+
+After cloning, keep `Source/`, `Datasets/`, and optional `Outputs/` as sibling folders. Download the datasets manually, review their licences, and provide the split CSV files plus cropped `Real/` and `Fake/` images under `Datasets/`.
+
+From `Source/`, validate the layout before opening a notebook:
+
+```bash
+python tools/validate_config.py --profile experiment
+```
+
+Use `cpu` or `gpu` instead of `experiment` to check a machine profile. The command is read-only; missing historical checkpoints are warnings. Add `--strict-hardware` to require CUDA for the GPU profile.
+
 ## Usage
 
 Run the notebooks in order as needed:
@@ -87,7 +101,7 @@ Run the notebooks in order as needed:
 3. [`03_ModelTesting.ipynb`](notebooks/03_ModelTesting.ipynb) — load the best checkpoints and predict sample images. Replace hard-coded example paths for your machine.
 4. [`04_VisualizeExample.ipynb`](notebooks/04_VisualizeExample.ipynb) — visualize FFT and filtered frequency maps; update the sample image path.
 
-`FaceCrop.ipynb` is a separate exploratory Hugging Face/Google Colab workflow. `TrainingModel Old ver.ipynb` is an earlier experiment; use the numbered training notebook for the current setup.
+`FaceCrop.ipynb` is a separate exploratory Hugging Face/Google Colab workflow.
 
 ## Results Summary
 
@@ -104,7 +118,9 @@ Among these saved runs, the asymmetric hybrid has the highest accuracy, F1, and 
 
 ## Artifacts and Configuration
 
-`Outputs/` contains the checkpoints and results shown above. Root-level `Outputs_*` directories contain other saved experiment variants. Evaluation stores metrics JSON, confusion matrices, and ROC plots in each model's `logs/evaluation_results/`. Main data paths and training defaults are defined in `utils/config.py`.
+[`configs/project.yaml`](configs/project.yaml) documents portable paths, profiles, model variants, and the current reference parameters. [`configs/dataset_manifest.yaml`](configs/dataset_manifest.yaml) defines dataset sources, CSV requirements, and expected historical artifacts. They are documentation and validation inputs only; existing training code and notebooks still use `utils/config.py` unchanged.
+
+`Outputs/` contains historical results and checkpoints. Keep datasets, weights, generated outputs, local overrides, and validation reports out of Git.
 
 ## License
 

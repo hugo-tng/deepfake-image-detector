@@ -56,6 +56,8 @@ Source/
 ├── engine/                 # Huấn luyện, đánh giá, suy luận
 ├── models/                 # Module không gian, tần số, fusion, detector
 ├── notebooks/              # Chuẩn bị dữ liệu, huấn luyện, kiểm tra, trực quan
+├── configs/                # Cấu hình tham chiếu và manifest dữ liệu
+├── tools/                  # Bộ kiểm tra cấu hình dự án chỉ-đọc
 ├── utils/                  # Cấu hình, metrics, checkpoint, biểu đồ
 ├── diagram_code.md         # Sơ đồ Mermaid chi tiết
 ├── requirements.txt
@@ -78,6 +80,18 @@ jupyter lab
 
 Mở Jupyter tại `Source/` để `system_path.py` tìm thấy module. Torchvision có thể tải trọng số EfficientNet ImageNet ở lần chạy đầu. Mã tự chọn CUDA nếu có, nếu không chạy bằng CPU. Nếu bản PyTorch được ghim không phù hợp phần cứng, hãy cài bản tương thích.
 
+### Clone dự án và kiểm tra cấu hình
+
+Sau khi clone, giữ `Source/`, `Datasets/` và `Outputs/` (nếu có) là các thư mục cùng cấp. Tải thủ công dataset, kiểm tra giấy phép, rồi đặt các CSV split và ảnh crop `Real/`, `Fake/` vào `Datasets/`.
+
+Từ `Source/`, kiểm tra cấu trúc trước khi mở notebook:
+
+```bash
+python tools/validate_config.py --profile experiment
+```
+
+Dùng `cpu` hoặc `gpu` thay cho `experiment` để kiểm tra profile máy. Lệnh chỉ-đọc; checkpoint lịch sử thiếu chỉ là cảnh báo. Thêm `--strict-hardware` nếu muốn yêu cầu CUDA cho profile GPU.
+
 ## Cách sử dụng
 
 Chạy notebook theo thứ tự khi cần:
@@ -87,7 +101,7 @@ Chạy notebook theo thứ tự khi cần:
 3. [`03_ModelTesting.ipynb`](notebooks/03_ModelTesting.ipynb) — tải checkpoint tốt nhất và dự đoán ảnh mẫu. Thay các đường dẫn mẫu viết sẵn cho máy của bạn.
 4. [`04_VisualizeExample.ipynb`](notebooks/04_VisualizeExample.ipynb) — trực quan FFT và phổ tần số sau lọc; cập nhật đường dẫn ảnh mẫu.
 
-`FaceCrop.ipynb` là notebook thử nghiệm riêng dùng Hugging Face/Google Colab. `TrainingModel Old ver.ipynb` là thí nghiệm cũ; dùng notebook huấn luyện được đánh số cho cấu hình hiện tại.
+`FaceCrop.ipynb` là notebook thử nghiệm riêng dùng Hugging Face/Google Colab.
 
 ## Tóm tắt kết quả
 
@@ -104,7 +118,9 @@ Trong các lần chạy đã lưu, hybrid bất đối xứng có accuracy, F1 v
 
 ## Artifact và cấu hình
 
-`Outputs/` chứa checkpoint và kết quả trong bảng. Các thư mục `Outputs_*` ở thư mục gốc lưu những biến thể thí nghiệm khác. Đánh giá lưu JSON metrics, confusion matrix và ROC curve trong `logs/evaluation_results/` của từng mô hình. Đường dẫn dữ liệu và cấu hình mặc định nằm trong `utils/config.py`.
+[`configs/project.yaml`](configs/project.yaml) ghi đường dẫn di động, profile, biến thể mô hình và các tham số tham chiếu. [`configs/dataset_manifest.yaml`](configs/dataset_manifest.yaml) nêu nguồn dữ liệu, yêu cầu CSV và artifact lịch sử mong đợi. Chúng chỉ phục vụ tài liệu và kiểm tra; code train và notebook hiện vẫn dùng `utils/config.py` như cũ.
+
+`Outputs/` chứa checkpoint và kết quả lịch sử. Không commit dataset, weights, output mới sinh, local override hoặc validation report.
 
 ## Giấy phép
 

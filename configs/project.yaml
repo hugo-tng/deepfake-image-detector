@@ -1,0 +1,59 @@
+schema_version: 1
+project:
+  name: ai-generated-portrait-detection
+  description: Research project for classifying portrait images as real or AI-generated.
+  source_root: .
+  workspace_root: ..
+labels:
+  real: { id: 0, display_name: Real }
+  fake: { id: 1, display_name: Fake }
+paths:
+  datasets: Datasets
+  outputs: Outputs
+  dataset_manifest: configs/dataset_manifest.yaml
+profiles:
+  cpu:
+    description: Validate a clone on a CPU-only machine.
+    hardware: { accelerator: cpu, cuda_required: false }
+    reference_runtime: { batch_size: 16, num_workers: 2, use_amp: false }
+  gpu:
+    description: Validate a CUDA-capable research machine.
+    hardware: { accelerator: cuda, cuda_required: false }
+    reference_runtime: { batch_size: 16, num_workers: 2, use_amp: true }
+  experiment:
+    description: Check the saved split and expected historical experiment artifacts.
+    hardware: { accelerator: any, cuda_required: false }
+    reference_runtime: { random_seed: 42 }
+reference_parameters:
+  scope: Documentation only. These values are not read by the runtime training code.
+  image: { image_size: 240, crop_size: 256, imagenet_normalization: true }
+  reproducibility: { random_seed: 42, deterministic_notebook_setting: false }
+  loader: { batch_size: 16, num_workers: 2, pin_memory_when_cuda: true, drop_last_train: true }
+  optimizer: { name: AdamW, learning_rate: 0.0001, backbone_lr_multiplier: 0.1, weight_decay: 0.0003 }
+  training: { num_epochs: 10, freeze_epochs: 3, label_smoothing: 0.05, use_amp: true }
+  scheduler: { type: cosine, t_max: 10, eta_min: 0.000001 }
+  early_stopping: { monitor: validation_f1, patience: 7 }
+  augmentation:
+    resize_multiplier: 1.15
+    horizontal_flip_probability: 0.5
+    color_jitter: { brightness: 0.4, contrast: 0.4, saturation: 0.2, hue: 0.05 }
+    gaussian_blur: { probability: 0.25, kernel_size: 3, sigma: [0.1, 1.0] }
+    jpeg_compression: { probability: 0.3, quality_range: [70, 95] }
+    gaussian_noise: { probability: 0.1, std: 0.01 }
+models:
+  efficientnet:
+    mode: spatial
+    architecture: EfficientNet-B1
+    model_config: { num_classes: 2, dropout_rate: 0.4, efficientnet_model: efficientnet_b1, spatial_dim: 512, freq_dim: 256, use_attention_fusion: true, attention_hidden_dim: 256 }
+  frequency:
+    mode: frequency
+    architecture: FFT-CNN
+    overrides: { freeze_epochs: 0, freq_dim: 512 }
+  efficientnet_fft_asym:
+    mode: hybrid
+    architecture: EfficientNet-B1 plus FFT-CNN asymmetric attention fusion
+    model_config: { num_classes: 2, dropout_rate: 0.4, efficientnet_model: efficientnet_b1, spatial_dim: 512, freq_dim: 256, use_attention_fusion: true, attention_hidden_dim: 256 }
+  efficientnet_fft_sym:
+    mode: hybrid
+    architecture: EfficientNet-B1 plus FFT-CNN symmetric attention fusion
+    overrides: { freq_dim: 512 }

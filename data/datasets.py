@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset
 from torchvision import transforms
 from PIL import Image
+from utils.config import GlobalConfig, _PROJECT
 
 
 class AddGaussianNoise:
@@ -46,11 +47,14 @@ class JPEGCompression:
         return Image.fromarray(decimg)
     
 
-def get_transforms(img_size=240):
+def get_transforms(img_size=None, transform_config=None):
     """
     Trả về dictionary chứa transform cho train và val/test
     """
     # Chuẩn hóa theo ImageNet (Standard practice)
+    img_size = img_size or GlobalConfig.IMG_SIZE
+    transform_config = transform_config or _PROJECT.transforms
+    aug = transform_config
     normalize = transforms.Normalize(
         mean=[0.485, 0.456, 0.406], 
         std=[0.229, 0.224, 0.225]
@@ -58,34 +62,34 @@ def get_transforms(img_size=240):
 
     data_transforms = {
         'train': transforms.Compose([
-            transforms.Resize(int(img_size * 1.15)),
+            transforms.Resize(int(img_size * aug.resize_multiplier)),
             transforms.RandomCrop(img_size),
-            transforms.RandomHorizontalFlip(p=0.5),
+            transforms.RandomHorizontalFlip(p=aug.horizontal_flip_probability),
 
             # Color augmentation (spatial robustness)
             transforms.ColorJitter(
-                brightness=0.4,
-                contrast=0.4,
-                saturation=0.2,
-                hue=0.05
+                brightness=aug.color_jitter.brightness,
+                contrast=aug.color_jitter.contrast,
+                saturation=aug.color_jitter.saturation,
+                hue=aug.color_jitter.hue
             ),
 
             # Blur (camera / codec artifact)
             transforms.RandomApply([
-                transforms.GaussianBlur(kernel_size=3, sigma=(0.1, 1.0))
-            ], p=0.25),
+                transforms.GaussianBlur(kernel_size=aug.gaussian_blur.kernel_size, sigma=aug.gaussian_blur.sigma)
+            ], p=aug.gaussian_blur.probability),
 
             # JPEG compression (deepfake-realistic)
             transforms.RandomApply([
-                JPEGCompression(quality_range=(70, 95))
-            ], p=0.3),
+                JPEGCompression(quality_range=aug.jpeg_compression.quality_range)
+            ], p=aug.jpeg_compression.probability),
 
             transforms.ToTensor(),
 
             # Sensor noise
             transforms.RandomApply([
-                AddGaussianNoise(std=0.01)
-            ], p=0.1),
+                AddGaussianNoise(std=aug.gaussian_noise.std)
+            ], p=aug.gaussian_noise.probability),
             
             normalize
         ]),
